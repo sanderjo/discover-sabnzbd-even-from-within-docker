@@ -19,10 +19,10 @@ curl -fsSL https://raw.githubusercontent.com/sanderjo/discover-sabnzbd-even-from
 
 ```
 LAN IP: 192.168.1.235 (Docker host)
-http://172.17.0.1:8080  (SABnzbd 5.2.0Beta2)  [docker host via bridge]
+http://172.17.0.1:8080  (SABnzbd 5.2.0Beta2)  <<< this host (via Docker bridge)
 http://192.168.1.109:8080  (SABnzbd 5.2.0Beta2)
 http://192.168.1.139:8080  (SABnzbd 5.1.3)
-http://192.168.1.235:8080  (SABnzbd 5.2.0Beta2)  [docker host]
+http://192.168.1.235:8080  (SABnzbd 5.2.0Beta2)  <<< this host
 http://192.168.1.244:8080  (SABnzbd, access denied from this IP)
 ```
 

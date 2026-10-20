@@ -139,7 +139,13 @@ done | awk '!seen[$0]++' |
   while read -r line; do
     host=${line#*://}; host=${host%%:*}
     note=""
-    [ "${HOSTIP:-}" = "$host" ] && note="  [docker host]"
-    [ "${GW:-}" = "$host" ] && in_docker && note="  [docker host via bridge]"
+    case $host in
+      127.0.0.1)
+        if [ "${BRIDGED:-0}" = 1 ]; then note="  <<< this container"; else note="  <<< this host"; fi ;;
+      "${HOSTIP:-}")
+        note="  <<< this host" ;;
+      "${GW:-}"|host.docker.internal)
+        [ "${BRIDGED:-0}" = 1 ] && note="  <<< this host (via Docker bridge)" ;;
+    esac
     echo "$line$note"
   done
