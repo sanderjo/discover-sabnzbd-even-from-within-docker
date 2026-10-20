@@ -48,6 +48,16 @@ is_docker_bridge_ip() { [[ $1 =~ ^172\.(1[6-9]|2[0-9]|3[01])\. ]]; }
 
 prefix24() { echo "${1%.*}"; }
 
+# Our own IPv4 address on the LAN with prefix $1
+own_ip() {
+  local ip
+  if command -v ip >/dev/null; then
+    ip=$(ip -4 route get "$1.1" 2>/dev/null | sed -nE 's/.* src ([0-9.]+).*/\1/p')
+  fi
+  [ -z "${ip:-}" ] && ip=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -m1 "^$1\.")
+  echo "${ip:-}"
+}
+
 # Probe one host:port; print a result line if it is SABnzbd
 probe() {
   local hostport=$1 scheme url body version
@@ -84,7 +94,9 @@ if in_docker; then
   [ -n "$GW" ] && targets+=("$GW")
   getent hosts host.docker.internal >/dev/null 2>&1 && targets+=(host.docker.internal)
 
-  if [ -z "${LAN:-}" ] && [ -n "$GW" ] && is_docker_bridge_ip "$GW"; then
+  BRIDGED=0
+  [ -n "$GW" ] && is_docker_bridge_ip "$GW" && BRIDGED=1
+  if [ -z "${LAN:-}" ] && [ "$BRIDGED" = 1 ]; then
     # Bridge network: the LAN router is the 2nd hop
     LANGW=$(hop 2)
     log "LAN gateway (hop 2): ${LANGW:-unknown}"
@@ -102,10 +114,14 @@ if [ -n "${LAN:-}" ]; then
   log "LAN: $LAN.0/24"
   # Broadcast-ping hack: the host answers 'Destination Host Unreachable'
   # from its own LAN address, revealing it from inside the container
-  if [ "$HAVE_PING" = 1 ] && in_docker; then
-    HOSTIP=$(ping -n -c5 -w6 -b "$LAN.0" 2>&1 |
+  if [ "${BRIDGED:-0}" = 1 ]; then
+    [ "$HAVE_PING" = 1 ] && HOSTIP=$(ping -n -c5 -w6 -b "$LAN.0" 2>&1 |
       awk '/Unreachable/ {sub(/:$/,"",$2); print $2; exit}')
-    log "Docker host LAN IP: ${HOSTIP:-unknown}"
+    echo "LAN IP: ${HOSTIP:-unknown} (Docker host)"
+  else
+    # Plain host or --network host: our own address is the host's
+    HOSTIP=$(own_ip "$LAN")
+    echo "LAN IP: ${HOSTIP:-unknown}"
   fi
   for i in $(seq 1 254); do targets+=("$LAN.$i"); done
 else
