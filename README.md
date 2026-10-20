@@ -9,6 +9,14 @@ also when run from inside a Docker container.
 docker run --rm debian:stable-slim bash -c 'apt-get -qq update >/dev/null && apt-get -qq install -y curl iputils-ping >/dev/null 2>&1; curl -fsSL https://raw.githubusercontent.com/sanderjo/discover-sabnzbd-even-from-within-docker/main/discover-sabnzbd.sh | bash'
 ```
 
+## Run your local copy in a fresh container
+
+From the repo directory (mounts it at `/workdir` inside the container):
+
+```bash
+docker run --rm -v "$PWD":/workdir debian:stable-slim bash -c 'apt-get -qq update >/dev/null && apt-get -qq install -y curl iputils-ping >/dev/null 2>&1; /workdir/discover-sabnzbd.sh'
+```
+
 ## Run it on a plain host
 
 ```bash
