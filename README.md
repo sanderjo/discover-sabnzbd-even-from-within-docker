@@ -74,7 +74,7 @@ Set as environment variables, e.g. `PORTS="8080 9090" LAN=192.168.1 VERBOSE=1 ./
 |------------|-------------|------------------------------------------|
 | `PORTS`    | `8080 9090` | Ports to probe                           |
 | `LAN`      | autodetect  | /24 prefix to sweep, e.g. `192.168.1`    |
-| `PARALLEL` | `64`        | Concurrent probes (Python version: `256`) |
+| `PARALLEL` | `256`       | Concurrent probes                        |
 | `TIMEOUT`  | `2`         | Per-request timeout in seconds           |
 | `VERBOSE`  | `0`         | `1` prints detection steps to stderr     |
 

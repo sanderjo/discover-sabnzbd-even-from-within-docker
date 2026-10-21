@@ -6,14 +6,14 @@
 # Env overrides:
 #   PORTS="8080 9090"     ports to probe
 #   LAN=192.168.1         /24 prefix to sweep (skip autodetection)
-#   PARALLEL=64           concurrent probes
+#   PARALLEL=256          concurrent probes
 #   TIMEOUT=2             per-request timeout in seconds
 #   VERBOSE=1             print detection steps to stderr
 
 set -u
 
 PORTS=${PORTS:-"8080 9090"}
-PARALLEL=${PARALLEL:-64}
+PARALLEL=${PARALLEL:-256}
 TIMEOUT=${TIMEOUT:-2}
 VERBOSE=${VERBOSE:-0}
 
