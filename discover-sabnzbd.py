@@ -155,73 +155,80 @@ def sort_key(target):
 # --- network discovery -----------------------------------------------------
 
 
+def scan(targets, label):
+    """Probe targets on all PORTS in parallel; return sorted (host, url, info) hits."""
+    jobs = list(dict.fromkeys((t, p) for t in targets for p in PORTS))
+    log(f"probing {len(dict.fromkeys(targets))} {label} hosts on ports: "
+        f"{' '.join(map(str, PORTS))}")
+    with ThreadPoolExecutor(max_workers=PARALLEL) as pool:
+        results = list(pool.map(lambda job: probe(*job), jobs))
+    hits = sorted(zip(jobs, results), key=lambda jr: sort_key(jr[0]))
+    return [(host, *result) for (host, _port), result in hits if result]
+
+
 def main():
-    targets = ["127.0.0.1"]
+    local = ["127.0.0.1"]
     gw = default_gw()
     log(f"default gateway: {gw or 'unknown'}")
     lan = os.environ.get("LAN")
-    bridged = False
+    docker = in_docker()
+    bridged = docker and bool(gw) and is_docker_bridge_ip(gw)
 
-    if in_docker():
+    if docker:
         log("running inside a container")
         # Docker host reachable via the bridge gateway / host.docker.internal
         if gw:
-            targets.append(gw)
+            local.append(gw)
         try:
             socket.gethostbyname("host.docker.internal")
-            targets.append("host.docker.internal")
+            local.append("host.docker.internal")
         except OSError:
             pass
-        bridged = bool(gw) and is_docker_bridge_ip(gw)
-        if not lan and bridged:
-            # Bridge network: the LAN router is the 2nd hop
-            lan_gw = hop(2)
-            log(f"LAN gateway (hop 2): {lan_gw or 'unknown'}")
-        else:
-            lan_gw = gw  # e.g. --network host
     else:
         log("running on a plain host")
-        lan_gw = gw
+
+    # --- local scan first: fast, so print it before the slow LAN detection ---
+
+    for host, url, info in scan(local, "local"):
+        if host == "127.0.0.1":
+            note = "  <<< this container" if bridged else "  <<< this host"
+        else:
+            note = "  <<< this host (via Docker bridge)" if bridged else ""
+        print(f"{url}  {info}{note}", flush=True)
+
+    # --- LAN detection -----------------------------------------------------
+
+    if not lan and bridged:
+        # Bridge network: the LAN router is the 2nd hop
+        lan_gw = hop(2)
+        log(f"LAN gateway (hop 2): {lan_gw or 'unknown'}")
+    else:
+        lan_gw = gw  # plain host or e.g. --network host
 
     if not lan and lan_gw:
         lan = prefix24(lan_gw)
 
-    host_ip = None
-    if lan:
-        log(f"LAN: {lan}.0/24")
-        if bridged:
-            # Broadcast-ping hack: the host answers 'Destination Host Unreachable'
-            # from its own LAN address, revealing it from inside the container
-            host_ip = ping_from(["-c5", "-w6", "-b", f"{lan}.0"], "unreachable")
-            print(f"LAN IP: {host_ip or 'unknown'} (Docker host)")
-        else:
-            # Plain host or --network host: our own address is the host's
-            host_ip = own_ip(lan)
-            print(f"LAN IP: {host_ip or 'unknown'}")
-        targets += [f"{lan}.{i}" for i in range(1, 255)]
-    else:
-        print("Could not determine LAN; only probing local targets (set LAN=a.b.c)",
+    if not lan:
+        print("Could not determine LAN; only probed local targets (set LAN=a.b.c)",
               file=sys.stderr)
-    sys.stdout.flush()
+        return
 
-    # --- scan --------------------------------------------------------------
+    log(f"LAN: {lan}.0/24")
+    if bridged:
+        # Broadcast-ping hack: the host answers 'Destination Host Unreachable'
+        # from its own LAN address, revealing it from inside the container
+        host_ip = ping_from(["-c5", "-w6", "-b", f"{lan}.0"], "unreachable")
+        print(f"LAN IP: {host_ip or 'unknown'} (Docker host)", flush=True)
+    else:
+        # Plain host or --network host: our own address is the host's
+        host_ip = own_ip(lan)
+        print(f"LAN IP: {host_ip or 'unknown'}", flush=True)
 
-    jobs = list(dict.fromkeys((t, p) for t in targets for p in PORTS))
-    log(f"probing {len(dict.fromkeys(targets))} hosts on ports: {' '.join(map(str, PORTS))}")
-    with ThreadPoolExecutor(max_workers=PARALLEL) as pool:
-        results = list(pool.map(lambda job: probe(*job), jobs))
+    # --- LAN scan ----------------------------------------------------------
 
-    for (host, _port), result in sorted(zip(jobs, results), key=lambda jr: sort_key(jr[0])):
-        if not result:
-            continue
-        url, info = result
-        note = ""
-        if host == "127.0.0.1":
-            note = "  <<< this container" if bridged else "  <<< this host"
-        elif host == host_ip:
-            note = "  <<< this host"
-        elif host in (gw, "host.docker.internal") and bridged:
-            note = "  <<< this host (via Docker bridge)"
+    lan_targets = [t for t in (f"{lan}.{i}" for i in range(1, 255)) if t not in local]
+    for host, url, info in scan(lan_targets, "LAN"):
+        note = "  <<< this host" if host == host_ip else ""
         print(f"{url}  {info}{note}")
 
 
