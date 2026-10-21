@@ -5,6 +5,7 @@ also when run from inside a Docker container.
 
 A Python 3 version (`discover-sabnzbd.py`, standard library only) does the same with the same
 options and output; see [Python version](#python-version).
+There is also a Java version (`discover-sabnzbd.jar`); see [Java version](#java-version).
 
 ## Run it from a fresh container
 
@@ -43,6 +44,24 @@ Or straight from GitHub:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sanderjo/discover-sabnzbd-even-from-within-docker/main/discover-sabnzbd.py | python3
 ```
+
+## Java version
+
+Runs on any Java 11+ runtime, standard library only:
+
+```bash
+java -jar discover-sabnzbd.jar
+```
+
+From a fresh container (only `ping` needs installing):
+
+```bash
+docker run --rm -v "$PWD":/workdir eclipse-temurin:21-jre bash -c 'apt-get -qq update >/dev/null && apt-get -qq install -y iputils-ping >/dev/null 2>&1; java -jar /workdir/discover-sabnzbd.jar'
+```
+
+Rebuild the jar from `DiscoverSabnzbd.java` with `./build-jar.sh` (compiles in an
+`eclipse-temurin` JDK container, so no local JDK is needed), or skip the jar and run
+the source directly with `java DiscoverSabnzbd.java`.
 
 ## Example output
 

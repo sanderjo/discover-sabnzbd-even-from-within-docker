@@ -171,7 +171,7 @@ def main():
     if docker:
         log("running inside a container")
         # Docker host reachable via the bridge gateway / host.docker.internal
-        if gw:
+        if bridged:
             local.append(gw)
         try:
             socket.gethostbyname("host.docker.internal")
