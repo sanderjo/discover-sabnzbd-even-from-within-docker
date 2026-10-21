@@ -25,7 +25,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 PORTS = [int(p) for p in os.environ.get("PORTS", "8080 9090").split()]
 PARALLEL = int(os.environ.get("PARALLEL", "64"))
@@ -144,26 +144,20 @@ def probe(host, port):
     return None
 
 
-def sort_key(target):
-    host, port = target
-    try:
-        return (0, ipaddress.ip_address(host).packed, port)
-    except ValueError:
-        return (1, host.encode(), port)
-
-
 # --- network discovery -----------------------------------------------------
 
 
 def scan(targets, label):
-    """Probe targets on all PORTS in parallel; return sorted (host, url, info) hits."""
+    """Probe targets on all PORTS in parallel; yield (host, url, info) hits as they come in."""
     jobs = list(dict.fromkeys((t, p) for t in targets for p in PORTS))
     log(f"probing {len(dict.fromkeys(targets))} {label} hosts on ports: "
         f"{' '.join(map(str, PORTS))}")
     with ThreadPoolExecutor(max_workers=PARALLEL) as pool:
-        results = list(pool.map(lambda job: probe(*job), jobs))
-    hits = sorted(zip(jobs, results), key=lambda jr: sort_key(jr[0]))
-    return [(host, *result) for (host, _port), result in hits if result]
+        futures = {pool.submit(probe, *job): job[0] for job in jobs}
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                yield (futures[future], *result)
 
 
 def main():
@@ -229,7 +223,7 @@ def main():
     lan_targets = [t for t in (f"{lan}.{i}" for i in range(1, 255)) if t not in local]
     for host, url, info in scan(lan_targets, "LAN"):
         note = "  <<< this host" if host == host_ip else ""
-        print(f"{url}  {info}{note}")
+        print(f"{url}  {info}{note}", flush=True)
 
 
 if __name__ == "__main__":
