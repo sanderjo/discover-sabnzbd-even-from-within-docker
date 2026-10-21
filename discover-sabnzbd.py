@@ -8,7 +8,7 @@ Usage: ./discover-sabnzbd.py
 Env overrides:
   PORTS="8080 9090"     ports to probe
   LAN=192.168.1         /24 prefix to sweep (skip autodetection)
-  PARALLEL=64           concurrent probes
+  PARALLEL=256          concurrent probes
   TIMEOUT=2             per-request timeout in seconds
   VERBOSE=1             print detection steps to stderr
 """
@@ -28,7 +28,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 PORTS = [int(p) for p in os.environ.get("PORTS", "8080 9090").split()]
-PARALLEL = int(os.environ.get("PARALLEL", "64"))
+PARALLEL = int(os.environ.get("PARALLEL", "256"))
 TIMEOUT = float(os.environ.get("TIMEOUT", "2"))
 VERBOSE = os.environ.get("VERBOSE", "0") == "1"
 HAVE_PING = shutil.which("ping") is not None
