@@ -3,6 +3,9 @@
 Bash script that finds SABnzbd instances on localhost, the Docker host and the LAN (/24),
 also when run from inside a Docker container.
 
+A Python 3 version (`discover-sabnzbd.py`, standard library only) does the same with the same
+options and output; see [Python version](#python-version).
+
 ## Run it from a fresh container
 
 ```bash
@@ -21,6 +24,24 @@ docker run --rm -v "$PWD":/workdir debian:stable-slim bash -c 'apt-get -qq updat
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sanderjo/discover-sabnzbd-even-from-within-docker/main/discover-sabnzbd.sh | bash
+```
+
+## Python version
+
+```bash
+./discover-sabnzbd.py
+```
+
+From a fresh container (only `ping` needs installing):
+
+```bash
+docker run --rm -v "$PWD":/workdir python:3-slim bash -c 'apt-get -qq update >/dev/null && apt-get -qq install -y iputils-ping >/dev/null 2>&1; /workdir/discover-sabnzbd.py'
+```
+
+Or straight from GitHub:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sanderjo/discover-sabnzbd-even-from-within-docker/main/discover-sabnzbd.py | python3
 ```
 
 ## Example output
